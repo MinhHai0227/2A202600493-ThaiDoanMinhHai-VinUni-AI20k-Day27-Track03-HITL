@@ -1,21 +1,21 @@
-# Day27 — Track 3: HITL PR Review Agent
+﻿# Day27 â€” Track 3: HITL PR Review Agent
 
 A 2-hour lab that builds a human-in-the-loop pull-request review agent in **LangGraph**, end-to-end.
 
 > 1. Agent reads a PR, analyzes code changes, proposes review comments.
-> 2. Confidence ~72% → show diff + reasoning → user approves → agent commits the review.
-> 3. Confidence ~58% → escalate: show context + specific questions for the reviewer.
+> 2. Confidence ~72% â†’ show diff + reasoning â†’ user approves â†’ agent commits the review.
+> 3. Confidence ~58% â†’ escalate: show context + specific questions for the reviewer.
 > 4. Every interaction is written to a SQLite audit trail; full sessions can be replayed.
 
-Students complete **4 exercises** (`exercises/`) that together build the full system. Each exercise has a runnable skeleton with `# TODO:` markers — your job is to fill them in.
+Students complete **4 exercises** (`exercises/`) that together build the full system. Each exercise has a runnable skeleton with `# TODO:` markers â€” your job is to fill them in.
 
-## Background — what problem does this solve?
+## Background â€” what problem does this solve?
 
 Code review is the bottleneck of most engineering teams: a senior engineer's time is finite, but PRs keep coming. PRs fall into roughly three buckets:
 
-- **Mechanical** (typo fixes, dependency bumps, one-line refactors) — safe, but still need someone to click "Approve". Spending senior time here is pure waste.
-- **Medium risk** (small features, schema additions) — usually fine, but a pair of human eyes catches edge cases. Reviewer time here pays off.
-- **High risk** (auth, migrations, anything security-touching) — definitely need a human, often with *specific questions* about intent and threat model.
+- **Mechanical** (typo fixes, dependency bumps, one-line refactors) â€” safe, but still need someone to click "Approve". Spending senior time here is pure waste.
+- **Medium risk** (small features, schema additions) â€” usually fine, but a pair of human eyes catches edge cases. Reviewer time here pays off.
+- **High risk** (auth, migrations, anything security-touching) â€” definitely need a human, often with *specific questions* about intent and threat model.
 
 If you apply the same human-driven review process to all three, you burn senior bandwidth on trivial PRs **and** you also fail to give risky PRs the careful attention they deserve.
 
@@ -24,11 +24,11 @@ If you apply the same human-driven review process to all three, you burn senior 
 This lab builds an agent that auto-triages every PR:
 
 1. The LLM reads the diff and produces a structured review with a **self-reported confidence score**.
-2. **Confidence > 72%** → the agent posts the review comment itself; no human in the loop.
-3. **58–72%** → the agent pauses (`interrupt()`) and shows the reviewer the diff + LLM reasoning + a one-click **approve / reject / edit** panel. On approve, the comment posts.
-4. **< 58%** → the agent **escalates strongly**. It shows the reviewer *specific questions the LLM is uncertain about* ("Why MD5? Is `SYNC_URL` meant to be HTTPS in production?") and waits for answers. Then it re-asks the LLM with the answers in context and posts a **refined** review.
+2. **Confidence > 72%** â†’ the agent posts the review comment itself; no human in the loop.
+3. **58â€“72%** â†’ the agent pauses (`interrupt()`) and shows the reviewer the diff + LLM reasoning + a one-click **approve / reject / edit** panel. On approve, the comment posts.
+4. **< 58%** â†’ the agent **escalates strongly**. It shows the reviewer *specific questions the LLM is uncertain about* ("Why MD5? Is `SYNC_URL` meant to be HTTPS in production?") and waits for answers. Then it re-asks the LLM with the answers in context and posts a **refined** review.
 
-Every step writes a row to a structured audit table — every routing decision, every human interaction, every LLM call — so the team can replay any session for compliance or debugging.
+Every step writes a row to a structured audit table â€” every routing decision, every human interaction, every LLM call â€” so the team can replay any session for compliance or debugging.
 
 ### Flow diagram
 
@@ -37,7 +37,7 @@ flowchart TD
     Fetch[fetch_pr] --> Analyze[analyze]
     Analyze --> Route{confidence}
     Route -- "> 72%" --> Auto[auto_approve]
-    Route -- "58–72%" --> Human["human_approval<br/>(interrupt)"]
+    Route -- "58â€“72%" --> Human["human_approval<br/>(interrupt)"]
     Route -- "< 58%" --> Escalate["escalate<br/>(interrupt)"]
     Escalate --> Synth[synthesize]
     Auto --> Commit[commit]
@@ -45,7 +45,7 @@ flowchart TD
     Synth --> Commit
 ```
 
-Every node also writes one row to `audit_events`. The graph state is persisted by `AsyncSqliteSaver`, so an interrupted session can resume from exactly where it stopped — even after the process is killed.
+Every node also writes one row to `audit_events`. The graph state is persisted by `AsyncSqliteSaver`, so an interrupted session can resume from exactly where it stopped â€” even after the process is killed.
 
 ## Lab assignment
 
@@ -57,17 +57,17 @@ Every node also writes one row to `audit_events`. The graph state is persisted b
 - Confidence-based routing
 - PostgreSQL audit trail
 
-**What this scaffolding already covers.** Exercises 1–4 deliver the HITL agent, confidence-based routing, and the structured audit trail. Two implementation notes:
-- The lab uses **SQLite** (`./hitl_audit.db`) instead of PostgreSQL for zero-setup. The schema is row-oriented with first-class columns — the same `AuditEntry` queries transfer to Postgres in production by swapping the checkpointer and connection string.
-- The approval UI is currently a terminal panel (Rich). The Streamlit UI is the fifth exercise — see [Exercise 5](#exercise-5--streamlit-approval-ui-apppy) below.
+**What this scaffolding already covers.** Exercises 1â€“4 deliver the HITL agent, confidence-based routing, and the structured audit trail. Two implementation notes:
+- The lab uses **SQLite** (`./hitl_audit.db`) instead of PostgreSQL for zero-setup. The schema is row-oriented with first-class columns â€” the same `AuditEntry` queries transfer to Postgres in production by swapping the checkpointer and connection string.
+- The approval UI is currently a terminal panel (Rich). The Streamlit UI is the fifth exercise â€” see [Exercise 5](#exercise-5--streamlit-approval-ui-apppy) below.
 
 ## Confidence routing
 
 | Confidence  | Branch           | Has HITL?                          | Demo PR |
 |-------------|------------------|------------------------------------|---------|
-| > 72%       | `auto_approve`   | No — agent commits directly        | (use any tiny PR) |
-| 58–72%      | `human_approval` | Yes — approve / reject / edit      | PR-Demo #1 |
-| < 58%       | `escalate`       | Yes — answer specific questions    | PR-Demo #2 |
+| > 72%       | `auto_approve`   | No â€” agent commits directly        | (use any tiny PR) |
+| 58â€“72%      | `human_approval` | Yes â€” approve / reject / edit      | PR-Demo #1 |
+| < 58%       | `escalate`       | Yes â€” answer specific questions    | PR-Demo #2 |
 
 Thresholds live in `common/schemas.py` (`AUTO_APPROVE_THRESHOLD = 0.73`, `ESCALATE_THRESHOLD = 0.58`).
 
@@ -75,25 +75,25 @@ Thresholds live in `common/schemas.py` (`AUTO_APPROVE_THRESHOLD = 0.73`, `ESCALA
 
 ```
 .
-├── README.md                # this file — the only documentation
-├── pyproject.toml
-├── .env.example
-│
-├── common/                  # shared utilities — provided, don't modify
-│   ├── llm.py               # ChatOpenAI factory (OpenRouter)
-│   ├── github.py            # httpx REST API client: fetch_pr / post_review_comment
-│   ├── db.py                # aiosqlite connection + write_audit_event
-│   └── schemas.py           # ReviewState (TypedDict) + PRAnalysis + AuditEntry (Pydantic)
-│
-├── exercises/               # YOUR WORK — skeleton code with TODOs
-│   ├── exercise_1_confidence.py
-│   ├── exercise_2_hitl.py
-│   ├── exercise_3_escalation.py
-│   └── exercise_4_audit.py
-│
-└── audit/                   # provided
-    ├── schema.sql           # CREATE TABLE audit_events
-    └── replay.py            # `python -m audit.replay --thread <id>` / --list
+â”œâ”€â”€ README.md                # this file â€” the only documentation
+â”œâ”€â”€ pyproject.toml
+â”œâ”€â”€ .env.example
+â”‚
+â”œâ”€â”€ common/                  # shared utilities â€” provided, don't modify
+â”‚   â”œâ”€â”€ llm.py               # ChatOpenAI factory (OpenRouter)
+â”‚   â”œâ”€â”€ github.py            # httpx REST API client: fetch_pr / post_review_comment
+â”‚   â”œâ”€â”€ db.py                # aiosqlite connection + write_audit_event
+â”‚   â””â”€â”€ schemas.py           # ReviewState (TypedDict) + PRAnalysis + AuditEntry (Pydantic)
+â”‚
+â”œâ”€â”€ exercises/               # YOUR WORK â€” skeleton code with TODOs
+â”‚   â”œâ”€â”€ exercise_1_confidence.py
+â”‚   â”œâ”€â”€ exercise_2_hitl.py
+â”‚   â”œâ”€â”€ exercise_3_escalation.py
+â”‚   â””â”€â”€ exercise_4_audit.py
+â”‚
+â””â”€â”€ audit/                   # provided
+    â”œâ”€â”€ schema.sql           # CREATE TABLE audit_events
+    â””â”€â”€ replay.py            # `python -m audit.replay --thread <id>` / --list
 ```
 
 ## Prerequisites
@@ -101,7 +101,7 @@ Thresholds live in `common/schemas.py` (`AUTO_APPROVE_THRESHOLD = 0.73`, `ESCALA
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/) package manager
 - An [OpenRouter](https://openrouter.ai/keys) API key (free tier has $1 credit)
-- A GitHub Personal Access Token — see next section
+- A GitHub Personal Access Token â€” see next section
 
 No Docker, no Postgres install, no `gh` CLI. The agent talks to GitHub directly via the REST API. Audit + checkpointer state both live in a single SQLite file (`./hitl_audit.db`) created automatically on first run.
 
@@ -109,12 +109,12 @@ No Docker, no Postgres install, no `gh` CLI. The agent talks to GitHub directly 
 
 The agent calls the GitHub REST API directly to **read PR diffs** and **post review comments**. A PAT is required.
 
-1. Open <https://github.com/settings/tokens/new> (classic — simplest).
+1. Open <https://github.com/settings/tokens/new> (classic â€” simplest).
 2. Fill in:
    - **Note:** `Day27 HITL Lab`
    - **Expiration:** 30 days
    - **Scopes:** tick **`public_repo`** (enough for `VinUni-AI20k/PR-Demo` since it's a public repo).
-3. Click **Generate token** → copy the `ghp_...` value immediately (shown only once).
+3. Click **Generate token** â†’ copy the `ghp_...` value immediately (shown only once).
 4. Paste into `.env`:
    ```bash
    echo "GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" >> .env
@@ -124,9 +124,9 @@ The agent calls the GitHub REST API directly to **read PR diffs** and **post rev
    curl -sH "Authorization: Bearer $(grep ^GITHUB_TOKEN .env | cut -d= -f2)" \
         https://api.github.com/repos/VinUni-AI20k/PR-Demo | grep '"full_name"'
    ```
-   If you see `"full_name": "VinUni-AI20k/PR-Demo"` → OK. `401` → wrong scope or typo.
+   If you see `"full_name": "VinUni-AI20k/PR-Demo"` â†’ OK. `401` â†’ wrong scope or typo.
 
-**Security:** `.env` is git-ignored. Each student uses **their own** PAT — comments show their username, so the instructor can see who approved what.
+**Security:** `.env` is git-ignored. Each student uses **their own** PAT â€” comments show their username, so the instructor can see who approved what.
 
 ## Setup (once)
 
@@ -144,18 +144,18 @@ Two PRs are kept at the public repo **<https://github.com/VinUni-AI20k/PR-Demo>*
 
 | PR | URL                                                                  | Expected branch          |
 |----|----------------------------------------------------------------------|--------------------------|
-| #1 — Add task priority field        | `https://github.com/VinUni-AI20k/PR-Demo/pull/1` | `human_approval` (~65%) |
-| #2 — Add user login + cloud sync    | `https://github.com/VinUni-AI20k/PR-Demo/pull/2` | `escalate` (<58%)       |
+| #1 â€” Add task priority field        | `https://github.com/VinUni-AI20k/PR-Demo/pull/1` | `human_approval` (~65%) |
+| #2 â€” Add user login + cloud sync    | `https://github.com/VinUni-AI20k/PR-Demo/pull/2` | `escalate` (<58%)       |
 
-PR #1 is mechanical (~40 lines) with one open question (schema migration). PR #2 has multiple red flags (MD5 password hashing, plaintext token storage, SQL injection in `Storage.add`, hard-coded user_id, no tests for new code) — the LLM should drop into the escalate branch and ask the reviewer specific questions.
+PR #1 is mechanical (~40 lines) with one open question (schema migration). PR #2 has multiple red flags (MD5 password hashing, plaintext token storage, SQL injection in `Storage.add`, hard-coded user_id, no tests for new code) â€” the LLM should drop into the escalate branch and ask the reviewer specific questions.
 
 ## The 5 exercises
 
-Do them in order — each builds on the previous. Open the file, read all `# TODO:` comments top-to-bottom, fill them in, then run the command shown.
+Do them in order â€” each builds on the previous. Open the file, read all `# TODO:` comments top-to-bottom, fill them in, then run the command shown.
 
-### Exercise 1 — Confidence routing (`exercise_1_confidence.py`)
+### Exercise 1 â€” Confidence routing (`exercise_1_confidence.py`)
 
-Build a small LangGraph that fetches a PR, analyzes it, then routes to one of three terminal nodes by confidence (`auto_approve` / `human_approval` / `escalate`). No HITL yet — terminals just print which branch fired.
+Build a small LangGraph that fetches a PR, analyzes it, then routes to one of three terminal nodes by confidence (`auto_approve` / `human_approval` / `escalate`). No HITL yet â€” terminals just print which branch fired.
 
 **You implement:** `node_analyze` (call LLM with `with_structured_output(PRAnalysis)`), `node_route` (return decision string), and the graph wiring (`add_node`, `add_edge`, `add_conditional_edges`).
 
@@ -166,7 +166,7 @@ uv run python exercises/exercise_1_confidence.py --pr https://github.com/VinUni-
 
 Success = the two PRs print **different** branches.
 
-### Exercise 2 — HITL with `interrupt()` (`exercise_2_hitl.py`)
+### Exercise 2 â€” HITL with `interrupt()` (`exercise_2_hitl.py`)
 
 Turn the `human_approval` node from a placeholder into a real pause-and-ask. Use `interrupt(payload)` inside the node, then resume the graph from `main()` with `Command(resume=<user_answer>)`.
 
@@ -180,21 +180,21 @@ while "__interrupt__" in result:
 
 ```bash
 uv run python exercises/exercise_2_hitl.py --pr https://github.com/VinUni-AI20k/PR-Demo/pull/1
-# → terminal pauses, shows a green panel, asks approve / reject / edit
+# â†’ terminal pauses, shows a green panel, asks approve / reject / edit
 ```
 
-### Exercise 3 — Escalation with reviewer Q&A (`exercise_3_escalation.py`)
+### Exercise 3 â€” Escalation with reviewer Q&A (`exercise_3_escalation.py`)
 
-When confidence is low, the agent shouldn't ask "approve/reject" — it should ask **specific questions** to gather context, then re-run the analysis with the answers.
+When confidence is low, the agent shouldn't ask "approve/reject" â€” it should ask **specific questions** to gather context, then re-run the analysis with the answers.
 
 **You implement:** prompt the LLM to populate `escalation_questions` when low-confidence, `node_escalate` (calls `interrupt(kind="escalation")` with the questions), and `node_synthesize` (re-prompts the LLM using the reviewer's answers to produce a refined review).
 
 ```bash
 uv run python exercises/exercise_3_escalation.py --pr https://github.com/VinUni-AI20k/PR-Demo/pull/2
-# → terminal shows a yellow panel; type an answer for each question
+# â†’ terminal shows a yellow panel; type an answer for each question
 ```
 
-### Exercise 4 — Structured SQLite audit trail (`exercise_4_audit.py`)
+### Exercise 4 â€” Structured SQLite audit trail (`exercise_4_audit.py`)
 
 Use `AsyncSqliteSaver` so the graph can resume after a crash, **and** at every meaningful node event, write one structured row to `audit_events` using the `AuditEntry` Pydantic model defined in `common/schemas.py`:
 
@@ -203,7 +203,7 @@ class AuditEntry(BaseModel):
     timestamp: datetime          # auto: datetime.now(timezone.utc)
     agent_id: str                # e.g. "pr-review-agent@v0.1"
     action: str                  # "fetch_pr" | "analyze" | "route" | "human_approval" | ...
-    confidence: float            # 0.0 – 1.0
+    confidence: float            # 0.0 â€“ 1.0
     risk_level: str              # "low" | "med" | "high"  (use risk_level_for(confidence))
     reviewer_id: str | None      # GitHub username on HITL steps, None otherwise
     decision: str                # "auto" | "approve" | "reject" | "edit" | "escalate" | "pending"
@@ -221,7 +221,7 @@ SELECT * FROM audit_events WHERE risk_level = 'high' AND decision = 'auto';   --
 
 ```bash
 uv run python exercises/exercise_4_audit.py --pr https://github.com/VinUni-AI20k/PR-Demo/pull/1
-# → after the run, replay the full session:
+# â†’ after the run, replay the full session:
 uv run python -m audit.replay --thread <thread_id-printed-above>
 uv run python -m audit.replay --list   # see recent threads
 ```
@@ -233,23 +233,23 @@ uv run python -m audit.replay --list   # see recent threads
 | LangGraph **checkpointer** (SQLite)  | Resume graph after crash, time-travel | Binary blob        | LangGraph runtime |
 | Table **`audit_events`**             | Structured decision log               | First-class columns (queryable) | Auditors, humans  |
 
-Both live in the same `./hitl_audit.db` file. The assignment line "ghi vào audit trail" is fulfilled by `audit_events`. The checkpointer is a free bonus from using `AsyncSqliteSaver`.
+Both live in the same `./hitl_audit.db` file. The assignment line "ghi vÃ o audit trail" is fulfilled by `audit_events`. The checkpointer is a free bonus from using `AsyncSqliteSaver`.
 
-### Exercise 5 — Streamlit approval UI (`app.py`)
+### Exercise 5 â€” Streamlit approval UI (`app.py`)
 
-The final assembly: wrap the LangGraph from exercises 1–4 into a **Streamlit** web UI so a reviewer can drive the whole flow from a browser instead of a terminal.
+The final assembly: wrap the LangGraph from exercises 1â€“4 into a **Streamlit** web UI so a reviewer can drive the whole flow from a browser instead of a terminal.
 
 The same three confidence buckets apply, but the *human experience* changes per bucket:
 
 | Confidence | Branch | What the reviewer sees in the UI |
 |---|---|---|
-| **> 72%** | `auto_approve` | A success card: confidence + LLM summary + a "View comment on GitHub" link. Reviewer does **nothing** — agent already posted. |
-| **58–72%** | `human_approval` | The normal approval card: diff, LLM reasoning, list of comments + three buttons **Approve / Reject / Edit**. One click and the comment posts. |
+| **> 72%** | `auto_approve` | A success card: confidence + LLM summary + a "View comment on GitHub" link. Reviewer does **nothing** â€” agent already posted. |
+| **58â€“72%** | `human_approval` | The normal approval card: diff, LLM reasoning, list of comments + three buttons **Approve / Reject / Edit**. One click and the comment posts. |
 | **< 58%** | `escalate` | The strong-escalation card: risk factors highlighted + a form with the LLM's specific questions. Reviewer fills answers, agent re-synthesizes, then shows the refined review for a final confirm. |
 
 **You implement** (`app.py` at the repo root):
 
-- A PR URL input form → trigger the graph.
+- A PR URL input form â†’ trigger the graph.
 - An `interrupt()` handler that renders the right card depending on `payload["kind"]` (`approval_request` vs `escalation`).
 - A resume call: `app.ainvoke(Command(resume=user_choice_or_answers), cfg)`.
 - `thread_id` persisted in `st.session_state` so reloading the page or jumping back to it keeps the session.
@@ -273,8 +273,8 @@ The skeleton wires up the Streamlit boilerplate (session state, page layout, top
 |-------------------------------------------------------|----------------------------------------------------|
 | Agent reads PR, analyzes, proposes comments           | `exercise_1_confidence.py` (analyze + routing)     |
 | Confidence-based routing (72% vs 58% etc.)            | `common/schemas.py` thresholds + `exercise_1`      |
-| 72% → diff + reasoning → user approves → commit       | `exercise_2_hitl.py`                                |
-| 58% → escalate with specific questions                | `exercise_3_escalation.py`                          |
+| 72% â†’ diff + reasoning â†’ user approves â†’ commit       | `exercise_2_hitl.py`                                |
+| 58% â†’ escalate with specific questions                | `exercise_3_escalation.py`                          |
 | Audit trail + replay full session                     | `exercise_4_audit.py`, `audit/schema.sql`, `audit/replay.py` |
 | Streamlit approval UI (final assembly)                | `app.py`                                            |
 
@@ -294,7 +294,7 @@ You forgot `checkpointer=...` in `.compile()`. Checkpointer is required for `int
 `thread_id` mismatch between the original `invoke` and the resuming `Command` call. Always print `thread_id` and use the same one when resuming.
 
 **Duplicate review comments posted after resume.**
-Side-effects placed *before* `interrupt()` in the same node — the node re-runs from the top after resume. Move side-effects to a downstream node (e.g. `commit`).
+Side-effects placed *before* `interrupt()` in the same node â€” the node re-runs from the top after resume. Move side-effects to a downstream node (e.g. `commit`).
 
 **`post_review_comment` returns 403 / 404.**
 Token lacks `public_repo` scope, or repo is private and you only have `public_repo`. Re-create the PAT with the right scope.
@@ -312,3 +312,4 @@ rm hitl_audit.db
 ```bash
 sqlite3 hitl_audit.db "SELECT action, confidence, decision, reviewer_id FROM audit_events ORDER BY id;"
 ```
+
